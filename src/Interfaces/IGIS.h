@@ -25,6 +25,7 @@
 #define IGIS_H
 
 #include "CompGeomDefs2.h"
+#include "CompGeomDefs3.h"
 #include "IBase.h"
 #include "ISelection.h"
 
@@ -94,6 +95,8 @@ public:
 	virtual	bool			WithinBox		(GISLayer_t layer,const Bbox2&  bounds		  ) const=0;
 	virtual bool			PtWithin		(GISLayer_t layer,const Point2& p			  ) const=0;
 	virtual bool			PtOnFrame		(GISLayer_t layer,const Point2& p, double dist) const=0;
+	// TODO: Document.
+	virtual Bbox3			GetVisibleBounds(											  ) const=0;
 	virtual bool			Cull			(				  const Bbox2& bounds		  ) const=0;	// Returns true if visible.  Different from bounds, because some objects "hang off" the screen a bit.
 
 	virtual	void			Rescale(
@@ -263,7 +266,7 @@ public:
 // written entirely from a geo-analysis standpoint to do recursive trees.
 
 class IGISComposite :  public virtual IGISEntity {
-public:
+	public:
 
 	virtual	int				GetNumEntities(void ) const=0;
 	virtual	IGISEntity *	GetNthEntity  (int n) const=0;

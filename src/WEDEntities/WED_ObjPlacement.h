@@ -35,6 +35,7 @@ DECLARE_PERSISTENT(WED_ObjPlacement)
 
 public:
 
+	virtual Bbox3		GetVisibleBounds() const;
 	virtual	bool		Cull(const Bbox2& b) const;
 	virtual void		GetResource(	  string& r) const;
 	virtual void		SetResource(const string& r);
@@ -52,7 +53,9 @@ public:
 
 			void		SetShowLevel(int show_level);
 			int			GetShowLevel(void) const;
-			double 	GetVisibleDeg(void) const;
+			double 		GetVisibleDeg(void) const;
+			double		GetVisibleMeters(void) const;
+			double		GetHeight(void) const;
 
 	virtual const char *	HumanReadableType(void) const { return "Object"; }
 
@@ -63,7 +66,9 @@ private:
 	WED_PropStringText			resource;
 	WED_PropIntEnum				show_level;
 
-	float						visibleWithinDeg;     // for culling in the map_view
+	mutable float				visibleWithinDeg;     // for culling in the map_view
+	mutable float				visibleWithinMeters;
+	mutable float				height;
 };
 
 

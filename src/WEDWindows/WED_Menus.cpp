@@ -131,29 +131,37 @@ static const GUI_MenuItem_t kConvertToMenu[] = {
 };
 
 static const GUI_MenuItem_t kViewMenu[] = {
-{	"Zoom Worl&d",				'/',gui_ControlFlag+gui_ShiftFlag,			0,	wed_ZoomWorld		},	// This conflicts with a Mac key strkoe but zoom world is not THAT useful
-{	"&Zoom Package",			'/',gui_ControlFlag+gui_OptionAltFlag,		0,	wed_ZoomAll			},
-{	"Zoom &Selection",			'/',gui_ControlFlag,						0,	wed_ZoomSelection	},	// simple cmd-slash for MOST imoprtant zoom command!
-{	"-",						0,	0,										0,	0					},
-//{	"&Feet",					0,	0,										0,	wed_UnitFeet		},
-//{	"&Meters",					0,	0,										0,	wed_UnitMeters		},
-//{	"-",						0,	0,										0,	0					},
-{	"Show &Line Markings",		0,	0,										0,	wed_ToggleLines		},
-{	"Show &Vertices",			0,	0,										0,	wed_ToggleVertices	},
-{	"Pavement Transparenc&y",	0,	0,										0,	0					},
-{	"&Object Density",			0,	0,										0,	0					},
-{	"-",						0,	0,										0,	0					},
-{	"&Pick Overlay Image...",	0,	0,										0,	wed_PickOverlay		},
-{	"Toggle &World Map",		0,	0,										0,	wed_ToggleWorldMap	},
-{	"Toggle &Navaids",			0,	0,										0,	wed_ToggleNavaidMap	},
-{	"S&lippy Map",				0,	0,										0,	0                   },
-{	"To&ggle Preview",			0,	0,										0,	wed_TogglePreview	},
+{	"Zoom Worl&d",				'/',gui_ControlFlag+gui_ShiftFlag,			0,	wed_ZoomWorld			},	// This conflicts with a Mac key strkoe but zoom world is not THAT useful
+{	"&Zoom Package",			'/',gui_ControlFlag+gui_OptionAltFlag,		0,	wed_ZoomAll				},
+{	"Zoom &Selection",			'/',gui_ControlFlag,						0,	wed_ZoomSelection		},	// simple cmd-slash for MOST imoprtant zoom command!
+{	"-",						0,	0,										0,	0						},
+//{	"&Feet",					0,	0,										0,	wed_UnitFeet			},
+//{	"&Meters",					0,	0,										0,	wed_UnitMeters			},
+//{	"-",						0,	0,										0,	0						},
+{	"Show &Line Markings",		0,	0,										0,	wed_ToggleLines			},
+{	"Show &Vertices",			0,	0,										0,	wed_ToggleVertices		},
+{	"Pavement Transparenc&y",	0,	0,										0,	0						},
+{	"&Object Density",			0,	0,										0,	0						},
+{	"-",						0,	0,										0,	0						},
+{	"&Pick Overlay Image...",	0,	0,										0,	wed_PickOverlay			},
+{	"Toggle &World Map",		0,	0,										0,	wed_ToggleWorldMap		},
+{	"Toggle &Navaids",			0,	0,										0,	wed_ToggleNavaidMap		},
+{	"S&lippy Map",				0,	0,										0,	0						},
+{	"To&ggle Preview",			0,	0,										0,	wed_TogglePreview		},
 #if WITHNWLINK
-{	"Toggle LiveMode",		    0,	0,										0,	wed_ToggleLiveView },
+{	"Toggle LiveMode",		    0,	0,										0,	wed_ToggleLiveView		},
 #endif
-{	"-",						0,	0,										0,	0					},
-{	"&Restore Frames",			0,	0,										0,	wed_RestorePanes	},
-{	NULL,						0,	0,										0,	0					},
+{	"-",						0,	0,										0,	0						},
+{	"3D Preview &Window",		0,	0,										0,	0						},
+{	"&Restore Frames",			0,	0,										0,	wed_RestorePanes		},
+{	NULL,						0,	0,										0,	0						},
+};
+
+static const GUI_MenuItem_t k3DPreviewMenu[] = {
+{	"&Toggle Window",					'P',gui_ControlFlag + gui_ShiftFlag,		0,	wed_TogglePreviewWindow			},
+{	"&Show Map Area in Preview Window", 'U',gui_ControlFlag,						0,	wed_ShowMapAreaInPreviewWindow	},
+{	"&Center Map on Preview Camera",	'U',gui_ControlFlag + gui_ShiftFlag,		0,	wed_CenterMapOnPreviewCamera	},
+{	NULL,								0,	0,										0,	0								}
 };
 
 static const GUI_MenuItem_t kSlippyMapMenu[] = {
@@ -298,6 +306,14 @@ void WED_MakeMenus(GUI_Application * inApp)
 
 	GUI_Menu	slippy_menu = inApp->CreateMenu(
 		"S&lippy Map",	kSlippyMapMenu, view_menu, 12);
+
+#if WITHNWLINK
+	const int preview_window_parent = 16;
+#else
+	const int preview_window_parent = 15;
+#endif
+	GUI_Menu	preview_window_menu = inApp->CreateMenu(
+		"3D Preview &Window", k3DPreviewMenu, view_menu, preview_window_parent);
 
 	GUI_Menu  sel_menu = inApp->CreateMenu(
 		"&Select", kSelectMenu, inApp->GetMenuBar(), 0);

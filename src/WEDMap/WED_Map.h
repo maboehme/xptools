@@ -33,7 +33,7 @@
 #include <stdint.h>
 #include "WED_MapLayer.h"
 
-class	WED_MapLayer;
+class	WED_MapLayerWithZoomer;
 class	WED_MapToolNew;
 class	IResolver;
 class	IGISEntity;
@@ -77,7 +77,7 @@ private:
 		ISelection *	GetSel();
 
 
-	vector<WED_MapLayer *>			mLayers;
+	vector<WED_MapLayer *>		mLayers;
 	WED_MapToolNew *				mTool;
 	IResolver *						mResolver;
 

@@ -428,17 +428,17 @@ LRESULT CALLBACK XWin::WinEventHandler(HWND hWnd, UINT message, WPARAM wParam, L
 			{
 				if (obj->mDragging >= 0)
 				{
-					obj->ClickDrag(obj->mMouse.x,obj->mMouse.y, obj->mDragging);
-					if(obj->mWantFakeUp)
+					obj->ClickDrag(obj->mMouse.x, obj->mMouse.y, obj->mDragging);
+					if (obj->mWantFakeUp)
 					{
 						btn = obj->mDragging;
 						obj->mDragging = -1;
 						obj->mWantFakeUp = 0;
-						obj->ClickUp(obj->mMouse.x,obj->mMouse.y,btn);
+						obj->ClickUp(obj->mMouse.x, obj->mMouse.y, btn);
 					}
 				}
 				else
-					obj->ClickMove(obj->mMouse.x,obj->mMouse.y);
+					obj->ClickMove(obj->mMouse.x, obj->mMouse.y);
 			}
 		}
 		result = DefWindowProcW(hWnd, message, wParam, lParam);

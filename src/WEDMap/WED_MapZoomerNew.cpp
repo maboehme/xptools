@@ -24,9 +24,278 @@
 #include "GUI_Messages.h"
 #include "XESConstants.h"
 
+#include "AssertUtils.h"
+#include "XESConstants.h"
+
+#if APL
+#include <OpenGL/gl.h>
+#else
+#include "glew.h"
+ //	#include <GL/gl.h>
+#endif
+
 inline	double	rescale(double s1, double s2, double d1, double d2, double v)
 {
 	return ((v - s1) * (d2 - d1) / (s2 - s1)) + d1;
+}
+
+WED_MapProjection::WED_MapProjection()
+	: mOriginLat(0),
+	  mOriginLon(0),
+      mUnitsPerDegLat(1),
+      mStandardParallelCos(1)
+{
+}
+
+void WED_MapProjection::SetOriginLL(const Point2& ll)
+{
+	mOriginLon = ll.x();
+	mOriginLat = ll.y();
+}
+
+void WED_MapProjection::SetStandardParallel(double lat)
+{
+	mStandardParallelCos = cos(lat * DEG_TO_RAD);
+}
+
+void WED_MapProjection::SetXYUnitsPerDegLat(double unitsPerDeg)
+{
+	mUnitsPerDegLat = unitsPerDeg;
+}
+
+void WED_MapProjection::SetXYUnitsPerMeter(double unitsPerMeter)
+{
+	mUnitsPerDegLat = unitsPerMeter * DEG_TO_MTR_LAT;
+}
+
+double WED_MapProjection::XYUnitsPerMeter() const
+{
+	return mUnitsPerDegLat * MTR_TO_DEG_LAT;
+}
+
+double WED_MapProjection::XToLon(double x) const
+{
+	return mOriginLon + x / mUnitsPerDegLat / mStandardParallelCos;
+}
+
+double WED_MapProjection::YToLat(double y) const
+{
+	return mOriginLat + y / mUnitsPerDegLat;
+}
+
+double WED_MapProjection::LonToX(double lon) const
+{
+	return (lon - mOriginLon) * mUnitsPerDegLat * mStandardParallelCos;
+}
+
+double WED_MapProjection::LatToY(double lat) const
+{
+	return (lat - mOriginLat) * mUnitsPerDegLat;
+}
+
+Point2 WED_MapProjection::XYToLL(const Point2& p) const
+{
+	return Point2(XToLon(p.x()), YToLat(p.y()));
+}
+
+Point2 WED_MapProjection::LLToXY(const Point2& p) const
+{
+	return Point2(LonToX(p.x()), LatToY(p.y()));
+}
+
+void WED_MapProjection::XYToLLv(Point2 * dst, const Point2 * src, int n) const
+{
+	while (n--)
+		*dst++ = XYToLL(*src++);
+}
+
+void WED_MapProjection::LLToXYv(Point2 * dst, const Point2 * src, int n) const
+{
+	while (n--)
+		*dst++ = LLToXY(*src++);
+}
+
+void WED_PerspectiveCamera::SetFOV(double horizontalFovDeg, double viewportWidth, double viewportHeight)
+{
+	mViewportWidth = viewportWidth;
+	mViewportHeight = viewportHeight;
+
+	if (viewportWidth == 0)
+		return;
+	
+	double widthNormalized = 2 * sin(horizontalFovDeg * DEG_TO_RAD / 2);
+	double heightNormalized = widthNormalized * viewportHeight / viewportWidth;
+
+	mWidth = widthNormalized * mNearClip;
+	mHeight = heightNormalized * mNearClip;
+
+	mFrustumPlanesDirty = true;
+}
+
+void WED_PerspectiveCamera::ApplyProjectionMatrix()
+{
+	glFrustum(-0.5 * mWidth, 0.5 * mWidth, -0.5 * mHeight, 0.5 * mHeight, mNearClip, mFarClip);
+}
+
+void WED_PerspectiveCamera::ApplyModelViewMatrix()
+{
+	double m[16] =
+	{
+		Right().dx, Right().dy, Right().dz, 0,
+		Up().dx, Up().dy, Up().dz, 0,
+		-Forward().dx, -Forward().dy, -Forward().dz, 0,
+		0, 0, 0, 1
+	};
+	glMultTransposeMatrixd(m);
+	glTranslated(-Position().x, -Position().y, -Position().z);
+
+	DebugAssert(ModelViewMatrixConsistent());
+}
+
+void WED_PerspectiveCamera::PushMatrix()
+{
+	DebugAssert(ModelViewMatrixConsistent());
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+
+	mXformStack.push_back(mXform);
+}
+
+void WED_PerspectiveCamera::PopMatrix()
+{
+	DebugAssert(ModelViewMatrixConsistent());
+
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+	DebugAssert(!mXformStack.empty());
+	if (mXformStack.empty()) return;
+	mXform = mXformStack.back();
+	mXformStack.pop_back();
+
+	mFrustumPlanesDirty = true;
+
+	DebugAssert(ModelViewMatrixConsistent());
+}
+
+void WED_PerspectiveCamera::Translate(const Vector3& v)
+{
+	DebugAssert(ModelViewMatrixConsistent());
+
+	glMatrixMode(GL_MODELVIEW);
+	glTranslated(v.dx, v.dy, v.dz);
+
+	mXform.position -= v;
+
+	mFrustumPlanesDirty = true;
+
+	DebugAssert(ModelViewMatrixConsistent());
+}
+
+void WED_PerspectiveCamera::Scale(double sx, double sy, double sz)
+{
+	DebugAssert(ModelViewMatrixConsistent());
+
+	glMatrixMode(GL_MODELVIEW);
+	glScaled(sx, sy, sz);
+
+	mXform.right.dx *= sx;
+	mXform.up.dx *= sx;
+	mXform.forward.dx *= sx;
+	mXform.position.x /= sx;
+
+	mXform.right.dy *= sy;
+	mXform.up.dy *= sy;
+	mXform.forward.dy *= sy;
+	mXform.position.y /= sy;
+
+	mXform.right.dz *= sz;
+	mXform.up.dz *= sz;
+	mXform.forward.dz *= sz;
+	mXform.position.z /= sz;
+
+	mFrustumPlanesDirty = true;
+
+	DebugAssert(ModelViewMatrixConsistent());
+}
+
+void WED_PerspectiveCamera::Rotate(double deg, const Vector3& axis)
+{
+	DebugAssert(ModelViewMatrixConsistent());
+
+	glMatrixMode(GL_MODELVIEW);
+	glRotated(deg, axis.dx, axis.dy, axis.dz);
+
+	double rad = deg * DEG_TO_RAD;
+
+	double costh = cos(rad);
+	double sinth = sin(rad);
+	double ux = axis.dx;
+	double uy = axis.dy;
+	double uz = axis.dz;
+
+	Vector3 col1(
+		costh + ux * ux * (1 - costh),
+		uy * ux * (1 - costh) + uz * sinth,
+		uz * ux * (1 - costh) - uy * sinth);
+	Vector3 col2(
+		ux * uy * (1 - costh) - uz * sinth,
+		costh + uy * uy * (1 - costh),
+		uz * uy * (1 - costh) + ux * sinth
+	);
+	Vector3 col3(
+		ux * uz * (1 - costh) + uy * sinth,
+		uy * uz * (1 - costh) - ux * sinth,
+		costh + uz * uz * (1 - costh)
+	);
+
+	Vector3 right = Right();
+	Vector3 up = Up();
+	Vector3 forward = Forward();
+	Vector3 position = mXform.position - Point3(0, 0, 0);
+
+	mXform.right = Vector3(right.dot(col1), right.dot(col2), right.dot(col3));
+	mXform.up = Vector3(up.dot(col1), up.dot(col2), up.dot(col3));
+	mXform.forward = Vector3(forward.dot(col1), forward.dot(col2), forward.dot(col3));
+	mXform.position = Point3(position.dot(col1), position.dot(col2), position.dot(col3));
+
+	mFrustumPlanesDirty = true;
+
+	DebugAssert(ModelViewMatrixConsistent());
+}
+
+static bool ApproxEqual(const Vector3& vec1, const Vector3& vec2, double epsilon = 1e-4)
+{
+	bool rval = (vec1 - vec2).squared_length() < epsilon*epsilon;
+	if (!rval)
+	{
+		printf("vec1: (%lf, %lf, %lf), vec2: (%lf, %lf, %lf)\n", vec1.dx, vec1.dy, vec1.dz, vec2.dx, vec2.dy, vec2.dz);
+	}
+	return rval;
+}
+
+bool WED_PerspectiveCamera::ModelViewMatrixConsistent()
+{
+	float m[16];
+	glGetFloatv(GL_MODELVIEW_MATRIX, m);
+
+	if (!ApproxEqual(mXform.right, Vector3(m[0], m[4], m[8])))
+		return false;
+	if (!ApproxEqual(mXform.up, Vector3(m[1], m[5], m[9])))
+		return false;
+	if (!ApproxEqual(mXform.forward, -Vector3(m[2], m[6], m[10])))
+		return false;
+	Vector3 preTranslation = Point3(0, 0, 0) - mXform.position;
+	Vector3 postTranslation(preTranslation.dot(Right()), preTranslation.dot(Up()), -preTranslation.dot(Forward()));
+	if (!ApproxEqual(postTranslation, Vector3(m[12], m[13], m[14]), 0.1))
+		return false;
+	if (!ApproxEqual(Vector3(0, 0, 0), Vector3(m[3], m[7], m[11])))
+		return false;
+	if (m[15] != 1.0)
+		return false;
+
+	return true;
 }
 
 WED_MapZoomerNew::WED_MapZoomerNew()
@@ -43,6 +312,7 @@ WED_MapZoomerNew::WED_MapZoomerNew()
 
 	mPixel2DegLat = 1.0;
 	mLonCenter = mLatCenter = 0.0;
+	UpdateProjection();
 	RecalcAspectRatio();
 
 }
@@ -51,58 +321,54 @@ WED_MapZoomerNew::~WED_MapZoomerNew()
 {
 }
 
-double	WED_MapZoomerNew::XPixelToLon(double x)
+double	WED_MapZoomerNew::XPixelToLon(double x) const
 {
-	return mLonCenter + (x - (mPixels[2]+mPixels[0])*0.5) * mPixel2DegLat / mLonCenterCOS;
-
+	return mProjection.XToLon(x);
 }
 
-double	WED_MapZoomerNew::YPixelToLat(double y)
+double	WED_MapZoomerNew::YPixelToLat(double y) const
 {
-	return mLatCenter + (y - (mPixels[3]+mPixels[1])*0.5) * mPixel2DegLat;
+	return mProjection.YToLat(y);
 }
 
-double	WED_MapZoomerNew::LonToXPixel(double lon)
+double	WED_MapZoomerNew::LonToXPixel(double lon) const
 {
-	return (mPixels[2]+mPixels[0])*0.5 + (lon - mLonCenter) * mLonCenterCOS / mPixel2DegLat;
+	return mProjection.LonToX(lon);
 }
 
-double	WED_MapZoomerNew::LatToYPixel(double lat)
+double	WED_MapZoomerNew::LatToYPixel(double lat) const
 {
-	return (mPixels[3]+mPixels[1])*0.5 + (lat - mLatCenter) / mPixel2DegLat;
+	return mProjection.LatToY(lat);
 }
 
-Point2	WED_MapZoomerNew::PixelToLL(const Point2& p)
+Point2	WED_MapZoomerNew::PixelToLL(const Point2& p) const
 {
 	return Point2(XPixelToLon(p.x()), YPixelToLat(p.y()));
 }
 
-Point2	WED_MapZoomerNew::LLToPixel(const Point2& p)
+Point2	WED_MapZoomerNew::LLToPixel(const Point2& p) const
 {
 	return Point2(LonToXPixel(p.x()), LatToYPixel(p.y()));
 }
 
-void	WED_MapZoomerNew::PixelToLLv(Point2 * dst, const Point2 * src, int n)
+void	WED_MapZoomerNew::PixelToLLv(Point2 * dst, const Point2 * src, int n) const
 {
 	while(n--)
 		*dst++ = PixelToLL(*src++);
 }
 
-void	WED_MapZoomerNew::LLToPixelv(Point2 * dst, const Point2 * src, int n)
+void	WED_MapZoomerNew::LLToPixelv(Point2 * dst, const Point2 * src, int n) const
 {
 	while(n--)
 		*dst++ = LLToPixel(*src++);
 }
 
-double	WED_MapZoomerNew::GetPPM(void)
+double	WED_MapZoomerNew::GetPPM(void) const
 {
-	#if BENTODO
-	can we do better?
-	#endif
-	return fabs(LatToYPixel(MTR_TO_DEG_LAT) - LatToYPixel(0.0));
+	return mProjection.XYUnitsPerMeter();
 }
 
-double WED_MapZoomerNew::GetClickRadius(double p)
+double WED_MapZoomerNew::GetClickRadius(double p) const
 {
 	return fabs(YPixelToLat(p) - YPixelToLat(0));
 }
@@ -119,6 +385,7 @@ void	WED_MapZoomerNew::SetPixelBounds(
 	mPixels[1] = inBottom;
 	mPixels[2] = inRight;
 	mPixels[3] = inTop;
+	UpdateProjection();
 	BroadcastMessage(GUI_SCROLL_CONTENT_SIZE_CHANGED,0);
 }
 
@@ -210,6 +477,7 @@ void	WED_MapZoomerNew::ZoomShowArea(
 	double scale_for_horz = required_width_logical / pix_avail_width * mLonCenterCOS;
 
 	mPixel2DegLat = max(scale_for_vert,scale_for_horz);
+	UpdateProjection();
 	RecalcAspectRatio();
 
 	BroadcastMessage(GUI_SCROLL_CONTENT_SIZE_CHANGED,0);
@@ -232,6 +500,7 @@ void	WED_MapZoomerNew::PanPixels(
 
 	mLatCenter -= delta_lat;
 	mLonCenter -= delta_lon;
+	UpdateProjection();
 	RecalcAspectRatio();
 
 	BroadcastMessage(GUI_SCROLL_CONTENT_SIZE_CHANGED,0);
@@ -257,6 +526,7 @@ void	WED_MapZoomerNew::ZoomAround(
 
 	if (zoomFactor <= 1.0 || mPixel2DegLat > 1e-8) // limit manual zoom in to 1 mm/pixel (108,900 meter / deg lat)
 		mPixel2DegLat /= zoomFactor;
+	UpdateProjection();
 	RecalcAspectRatio();
 
 	PanPixels(px,py, centerXPixel, centerYPixel);
@@ -342,6 +612,7 @@ void	WED_MapZoomerNew::ScrollH(float xOffset)
 	float now = vis[0] - log[0];
 	xOffset -= now;
 	mLonCenter += xOffset;// * mPixel2DegLat / mLonCenterCOS);
+	UpdateProjection();
 }
 
 void	WED_MapZoomerNew::ScrollV(float yOffset)
@@ -354,7 +625,42 @@ void	WED_MapZoomerNew::ScrollV(float yOffset)
 	float now = vis[1] - log[1];
 	yOffset -= now;
 	mLatCenter += (yOffset);// * mPixel2DegLat);
+	UpdateProjection();
 	RecalcAspectRatio();
+}
+
+bool WED_MapZoomerNew::PointVisible(const Point3& point) const
+{
+	return
+		point.x >= mPixels[0] && point.x <= mPixels[2] &&
+		point.y >= mPixels[1] && point.y <= mPixels[3];
+}
+
+bool WED_MapZoomerNew::BboxVisible(const Bbox3& bbox) const
+{
+	return
+		bbox.xmax() >= mPixels[0] && bbox.xmin() <= mPixels[2] &&
+		bbox.ymax() >= mPixels[1] && bbox.ymin() <= mPixels[3];
+}
+
+double WED_MapZoomerNew::PixelSize(double zCamera, double featureSize) const
+{
+	return featureSize * GetPPM();
+}
+
+double WED_MapZoomerNew::PixelSize(const Bbox3& bbox) const
+{
+	return max(bbox.xmax() - bbox.xmin(), bbox.ymax() - bbox.ymin()) * GetPPM();
+}
+
+double WED_MapZoomerNew::PixelSize(const Bbox3& bbox, double featureSize) const
+{
+	return featureSize * GetPPM();
+}
+
+double WED_MapZoomerNew::PixelSize(const Point3& position, double diameter) const
+{
+	return diameter * GetPPM();
 }
 
 void	WED_MapZoomerNew::RecalcAspectRatio(void)
@@ -365,7 +671,58 @@ void	WED_MapZoomerNew::RecalcAspectRatio(void)
 	double bot_lat = YPixelToLat(mPixels[1]);
 
 	if (top_lat > 0 && bot_lat < 0)
+	{
 		mLonCenterCOS = 1.0;
+		mProjection.SetStandardParallel(0.0);
+	}
 	else
-		mLonCenterCOS = cos(min(fabs(top_lat),fabs(bot_lat)) * DEG_TO_RAD);
+	{
+		mLonCenterCOS = cos(min(fabs(top_lat), fabs(bot_lat)) * DEG_TO_RAD);
+		mProjection.SetStandardParallel(min(fabs(top_lat), fabs(bot_lat)));
+	}
+
+	UpdateProjection();
+}
+
+void	WED_MapZoomerNew::PushMatrix()
+{
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+}
+
+void	WED_MapZoomerNew::PopMatrix()
+{
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+}
+
+void	WED_MapZoomerNew::Translate(const Vector3& v)
+{
+	glMatrixMode(GL_MODELVIEW);
+	glTranslated(v.dx, v.dy, v.dz);
+}
+
+void	WED_MapZoomerNew::Scale(double sx, double sy, double sz)
+{
+	glMatrixMode(GL_MODELVIEW);
+	glScaled(sx, sy, sz);
+}
+
+void	WED_MapZoomerNew::Rotate(double deg, const Vector3& axis)
+{
+	glMatrixMode(GL_MODELVIEW);
+	glRotated(deg, axis.dx, axis.dy, axis.dz);
+}
+
+void	WED_MapZoomerNew::UpdateProjection()
+{
+	// Need to call this whenever mLonCenter, mLatCenter, mPixels,
+	// mPixel2DegLat or mLonCenterCOS changes.
+
+	mProjection.SetOriginLL({
+		mLonCenter - (mPixels[2] + mPixels[0])*0.5 * mPixel2DegLat / mLonCenterCOS,
+		mLatCenter - (mPixels[3] + mPixels[1])*0.5 * mPixel2DegLat});
+
+	// Or should we do this directly where we update mPixel2DegLat?
+	mProjection.SetXYUnitsPerDegLat(1.0 / mPixel2DegLat);
 }

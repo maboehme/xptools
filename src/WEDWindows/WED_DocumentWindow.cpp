@@ -52,6 +52,8 @@
 #include "WED_LibraryPane.h"
 #include "WED_LibraryPreviewPane.h"
 #include "WED_LinePlacement.h"
+#include "WED_MapPreviewPane.h"
+#include "WED_MapPreviewWindow.h"
 #include "WED_PolygonPlacement.h"
 #include "WED_Routing.h"
 #include "WED_Taxiway.h"
@@ -163,7 +165,6 @@ WED_DocumentWindow::WED_DocumentWindow(
 	mMainSplitter2->Show();
 	mMainSplitter2->SetSticky(1,1,1,1);
 
-
 	double	lb[4];
 	mDocument->GetBounds(lb);
 	mMapPane = new WED_MapPane(this, lb, inDocument,inDocument->GetArchive(),lib->GetAdapter());
@@ -252,6 +253,13 @@ WED_DocumentWindow::WED_DocumentWindow(
 	mPropPane->SetSticky(1,0.5,1,1);
 
 	/****************************************************************************************************************************************************************
+	 * MAP PREVIEW WINDOW
+	****************************************************************************************************************************************************************/
+
+	mMapPreviewWindow = new WED_MapPreviewWindow(this, mDocument);
+	mMapPreviewPane = mMapPreviewWindow->MapPreviewPane();
+
+	/****************************************************************************************************************************************************************
 	 * FINAL CLEANUP
 	****************************************************************************************************************************************************************/
 
@@ -260,22 +268,7 @@ WED_DocumentWindow::WED_DocumentWindow(
 	XWin::GetBounds(zw,zw+1);
 	XWin::GetWindowLoc(xy,xy+1);
 
-	// This is a safety-hack.  The user's prefs may specify the window at a location that
-	// is off screen, either because the prefs are borked or because the doc came from
-	// a machine with a much larger dekstop. So...
-	//
-	// Coming in we have the default rect for a window - hopefully it is BIG because we
-	// pass xwin_style_fullscreen to XWin.  So if our currnet location does not allow 
-	// for at least one 100x100 pixel corner to be inside the current Desktop 
-	// (which is the bounding box around ALL monitors) - then ignore the preferences
-	// and the new window will pop up fullscreen on the primary monitor instead.
-
-	
 	LOG_MSG("I/Doc opening new scenery window, initial win xy %d %d wh %d %d\n", xy[0], xy[1], zw[0], zw[1]);
-	
-	int safe_rect[4] = { xy[0], xy[1], xy[0] + zw[0], xy[1] + zw[1] };
-	XWin::GetDesktop(safe_rect);
-	LOG_MSG("I/Doc desktop rect %d %d %d %d\n", safe_rect[0], safe_rect[1], safe_rect[2], safe_rect[3]);
 
 	xy[0] = inDocument->ReadIntPref("window/x_loc",xy[0]);
 	xy[1] = inDocument->ReadIntPref("window/y_loc",xy[1]);
@@ -284,13 +277,7 @@ WED_DocumentWindow::WED_DocumentWindow(
 
 	LOG_MSG("I/Doc size from prefs xy %d %d wh %d %d\n", xy[0], xy[1], zw[0], zw[1]);
 
-	if(xy[0] < safe_rect[2]-100 && xy[1] < safe_rect[3]-100 &&
-	  (xy[0] + zw[0]) >= safe_rect[0]+100 && (xy[1] + zw[1]) >= safe_rect[1]+100)
-	{
-		SetBounds(xy[0],xy[1],xy[0]+zw[0],xy[1]+zw[1]);
-	}
-	else
-		LOG_MSG("W/Doc SafeRect was triggerd\n");
+	SetBoundsSafe(xy[0], xy[1], xy[0] + zw[0], xy[1] + zw[1]);
 		
 	int main_split = inDocument->ReadIntPref("window/main_split",zw[0] / 5);
 	int main_split2 = inDocument->ReadIntPref("window/main_split2",zw[0] * 2 / 3);
@@ -306,6 +293,8 @@ WED_DocumentWindow::WED_DocumentWindow(
 
 
 	mMapPane->FromPrefs(inDocument);
+	mMapPreviewWindow->FromPrefs(inDocument);
+	mMapPreviewPane->FromPrefs(inDocument);
 	mPropPane->FromPrefs(inDocument,0);
 	// doc/use_feet and doc/InfoDMS are global only preferences now, not read from each document any more
 #if TYLER_MODE
@@ -330,6 +319,7 @@ WED_DocumentWindow::WED_DocumentWindow(
 
 WED_DocumentWindow::~WED_DocumentWindow()
 {
+	delete mMapPreviewWindow;
 }
 
 int	WED_DocumentWindow::HandleKeyPress(uint32_t inKey, int inVK, GUI_KeyFlags inFlags)
@@ -367,6 +357,18 @@ int	WED_DocumentWindow::HandleCommand(int command)
 			mPropSplitter->AlignContentsAt(prop_split);
 			mLibSplitter->AlignContentsAt(prev_split);
 		}
+		return 1;
+	case wed_TogglePreviewWindow:
+		if (mMapPreviewWindow->IsVisible())
+			mMapPreviewWindow->Hide();
+		else
+			mMapPreviewWindow->Show();
+		return 1;
+	case wed_ShowMapAreaInPreviewWindow:
+		mMapPreviewPane->DisplayExtent(mMapPane->GetMapVisibleBounds(), 1.0);
+		return 1;
+	case wed_CenterMapOnPreviewCamera:
+		mMapPane->CenterOnPoint(mMapPreviewPane->CameraPositionLL());
 		return 1;
 	case wed_autoOpenLibPane:
 		if (mAutoOpen == 0)
@@ -464,13 +466,13 @@ int	WED_DocumentWindow::HandleCommand(int command)
 #if HAS_GATEWAY
 	case wed_ExportToGateway:		WED_DoExportToGateway(mDocument); return 1;
 #endif
-	case wed_ImportApt:		WED_DoImportApt(mDocument,mDocument->GetArchive(), mMapPane); return 1;
+	case wed_ImportApt:		WED_DoImportApt(mDocument,mDocument->GetArchive(), mMapPane, mMapPreviewPane); return 1;
 	case wed_ImportDSF:		WED_DoImportDSF(mDocument); return 1;
 	case wed_ImportOrtho:
 		mMapPane->Map_HandleCommand(command);
 		return 1;
 #if HAS_GATEWAY
-	case wed_ImportGateway: WED_DoImportFromGateway(mDocument, mMapPane); return 1;
+	case wed_ImportGateway: WED_DoImportFromGateway(mDocument, mMapPane, mMapPreviewPane); return 1;
 #endif
 #if GATEWAY_IMPORT_FEATURES
 	case wed_ImportGatewayExtract:	WED_DoImportDSFText(mDocument); return 1;
@@ -541,6 +543,9 @@ int	WED_DocumentWindow::CanHandleCommand(int command, string& ioName, int& ioChe
 	case wed_ConvertToTaxiway:	return WED_CanConvertTo(mDocument, &IsType<WED_Taxiway>, true);
 	case wed_ConvertToTaxiline:	return WED_CanConvertTo(mDocument, &IsType<WED_AirportChain>, false);
 	case wed_ConvertToLine:		return WED_CanConvertTo(mDocument, &IsType<WED_LinePlacement>, false);
+	case wed_TogglePreviewWindow:	ioCheck = mMapPreviewWindow->IsVisible(); return 1;
+	case wed_ShowMapAreaInPreviewWindow:	return 1;
+	case wed_CenterMapOnPreviewCamera:	return 1;
 	case wed_AddATCFreq:return WED_CanMakeNewATCFreq(mDocument);
 	case wed_AddATCFlow:return WED_CanMakeNewATCFlow(mDocument);
 	case wed_AddATCRunwayUse:return WED_CanMakeNewATCRunwayUse(mDocument);
@@ -627,6 +632,8 @@ void	WED_DocumentWindow::ReceiveMessage(
 	{
 		IDocPrefs * prefs = reinterpret_cast<IDocPrefs *>(inParam);
 		mMapPane->ToPrefs(prefs);
+		mMapPreviewPane->ToPrefs(prefs);
+		mMapPreviewWindow->ToPrefs(prefs);
 		mPropPane->ToPrefs(prefs,0);
 
 		// not writing doc/use_feet any more. Its a global preference now.
@@ -660,6 +667,8 @@ void	WED_DocumentWindow::ReceiveMessage(
 	{
 		IDocPrefs * prefs = reinterpret_cast<IDocPrefs *>(inParam);
 		mMapPane->FromPrefs(prefs);
+		mMapPreviewWindow->FromPrefs(prefs);
+		mMapPreviewPane->FromPrefs(prefs);
 		mPropPane->FromPrefs(prefs,0);
 
 		// doc/use_feet and doc/InfoDMS are global only preferences now, not read from each document any more

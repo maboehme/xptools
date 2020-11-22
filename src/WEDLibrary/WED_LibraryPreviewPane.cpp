@@ -555,7 +555,7 @@ void	WED_LibraryPreviewPane::Draw(GUI_GraphState * g)
 				g->EnableDepth(true, true);
 				glClear(GL_DEPTH_BUFFER_BIT);
 
-				draw_facade(mTexMgr, mResMgr, mRes, *fac, footprint, choices, mHgt, g, true);
+				draw_facade(mTexMgr, mResMgr, mRes, *fac, footprint, choices, mHgt, g, true, nullptr);
 
 				// draw "ground" plane
 				g->SetTexUnits(0);
@@ -601,7 +601,7 @@ void	WED_LibraryPreviewPane::Draw(GUI_GraphState * g)
 				                      -(o->xyz_max[2]+o->xyz_min[2])*0.5 };
 
 				begin3d(b, real_radius);
-				draw_obj_at_xyz(mTexMgr, o, xyz_off[0], xyz_off[1], xyz_off[2],	0, g);
+				draw_obj_at_xyz(mTexMgr, o, xyz_off[0], xyz_off[1], xyz_off[2],	0, g, nullptr);
 				end3d(b);
 			}
 			else if (mResMgr->GetAGP(mRes,agp))
@@ -615,7 +615,7 @@ void	WED_LibraryPreviewPane::Draw(GUI_GraphState * g)
 									  (agp->xyz_max[2] + agp->xyz_min[2]) * 0.5 };
 
 				begin3d(b, real_radius);
-				draw_agp_at_xyz(mTexMgr, agp, xyz_off[0], xyz_off[1], xyz_off[2], mHgt, 0, g);
+				draw_agp_at_xyz(mTexMgr, agp, xyz_off[0], xyz_off[1], xyz_off[2], mHgt, 0, g, nullptr);
 				end3d(b);
 			}
 			break;

@@ -238,6 +238,8 @@
     <ClCompile Include="..\..\src\WEDMap\WED_MapBkgnd.cpp" />
     <ClCompile Include="..\..\src\WEDMap\WED_MapLayer.cpp" />
     <ClCompile Include="..\..\src\WEDMap\WED_MapPane.cpp" />
+    <ClCompile Include="..\..\src\WEDMap\WED_MapPreviewPane.cpp" />
+    <ClCompile Include="..\..\src\WEDMap\WED_MapPreviewWindow.cpp" />
     <ClCompile Include="..\..\src\WEDMap\WED_MapToolNew.cpp" />
     <ClCompile Include="..\..\src\WEDMap\WED_MapZoomerNew.cpp" />
     <ClCompile Include="..\..\src\WEDMap\WED_MarqueeTool.cpp" />
@@ -514,6 +516,8 @@
     <ClInclude Include="..\..\src\WEDMap\WED_MapBkgnd.h" />
     <ClInclude Include="..\..\src\WEDMap\WED_MapLayer.h" />
     <ClInclude Include="..\..\src\WEDMap\WED_MapPane.h" />
+    <ClInclude Include="..\..\src\WEDMap\WED_MapPreviewPane.h" />
+    <ClInclude Include="..\..\src\WEDMap\WED_MapPreviewWindow.h" />
     <ClInclude Include="..\..\src\WEDMap\WED_MapToolNew.h" />
     <ClInclude Include="..\..\src\WEDMap\WED_MapZoomerNew.h" />
     <ClInclude Include="..\..\src\WEDMap\WED_MarqueeTool.h" />
@@ -685,8 +689,7 @@
       <OmitFramePointers>false</OmitFramePointers>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>
-      </GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <LargeAddressAware>true</LargeAddressAware>
       <AdditionalDependencies>libcurl_a.lib;libexpatMT.lib;freetype.lib;jpeg.lib;libpng.lib;squish.lib;libtiff.lib;geotiff.lib;proj.lib;zlibstat.lib;comctl32.lib;glu32.lib;Opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>

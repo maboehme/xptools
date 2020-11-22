@@ -150,7 +150,7 @@ WED_MapPane::WED_MapPane(GUI_Commander * cmdr, double map_bounds[4], IResolver *
 	mLayers.push_back(mSlippyMap =		new WED_SlippyMap(mMap, mMap, resolver));
 	mLayers.push_back(mStructureLayer = new WED_StructureLayer(mMap, mMap, resolver));
 	mLayers.push_back(mATCLayer =		new WED_ATCLayer(mMap, mMap, resolver));
-	mLayers.push_back(mPreview =		new WED_PreviewLayer(mMap, mMap, resolver));
+	mLayers.push_back(mPreview =		new WED_PreviewLayer(mMap, &mMap->Projection(), mMap, resolver));
 	mLayers.push_back(mNavaidMap =		new WED_NavaidLayer(mMap, mMap, resolver));
 //	mLayers.push_back(mTileserver =		new WED_TileServerLayer(mMap, mMap, resolver));
 	mLayers.push_back(					new WED_DebugLayer(mMap, mMap, resolver));
@@ -356,6 +356,25 @@ void WED_MapPane::ZoomShowSel(double scale)   // by default show just a bit more
 		mMap->ZoomShowArea(box.p1.x(),box.p1.y(),box.p2.x(),box.p2.y());
 	}
 	mMap->Refresh();
+}
+
+void WED_MapPane::CenterOnPoint(const Point2& centerLL)
+{
+	double west, south, east, north;
+	mMap->GetMapVisibleBounds(west, south, east, north);
+	double lonExtent = east - west;
+	double latExtent = north - south;
+	mMap->ZoomShowArea(
+		centerLL.x() - lonExtent / 2, centerLL.y() - latExtent / 2,
+		centerLL.x() + lonExtent / 2, centerLL.y() + latExtent / 2);
+	Refresh();
+}
+
+Bbox2 WED_MapPane::GetMapVisibleBounds()
+{
+	Bbox2 bounds;
+	mMap->GetMapVisibleBounds(bounds.p1.x_, bounds.p1.y_, bounds.p2.x_, bounds.p2.y_);
+	return bounds;
 }
 
 int		WED_MapPane::Map_KeyPress(uint32_t inKey, int inVK, GUI_KeyFlags inFlags)

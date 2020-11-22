@@ -112,6 +112,8 @@ protected:
 	virtual int				AcceptLoseFocus(int inForce) 								{ return 1; }
 	virtual	int				AcceptFocusChain(void)										{ return 1; }
 
+	virtual bool			ShouldDefer(void)											{ return true; }
+
 private:
 
 			struct	deferred_cmd_or_key {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Laminar Research.
+ * Copyright (c) 2020, Laminar Research.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,26 +21,39 @@
  *
  */
 
-#ifndef WED_WorldMapLayer_H
-#define WED_WorldMapLayer_H
+#ifndef WED_MapPreviewWindow_H
+#define WED_MapPreviewWindow_H
 
-#include "WED_MapLayer.h"
-class ITexMgr;
+#include "GUI_Commander.h"
+#include "GUI_Listener.h"
+#include "GUI_Window.h"
+#include "IDocPrefs.h"
 
-class WED_WorldMapLayer : public WED_MapLayerWithZoomer {
+class GUI_Commander;
+class IDocPrefs;
+class WED_Document;
+class WED_MapPreviewPane;
+
+class WED_MapPreviewWindow : public GUI_Window
+{
 public:
+	WED_MapPreviewWindow(GUI_Commander * documentWindowCmdr, WED_Document * document);
 
-						 WED_WorldMapLayer(GUI_Pane * host, WED_MapZoomerNew * zoomer, IResolver * resolver);
-	virtual				~WED_WorldMapLayer();
+	int	HandleKeyPress(uint32_t inKey, int inVK, GUI_KeyFlags inFlags) override;
+	int	HandleCommand(int command) override;
 
-	virtual	void		DrawVisualization		(bool inCurrent, GUI_GraphState * g);
-	virtual	void		GetCaps(bool& draw_ent_v, bool& draw_ent_s, bool& cares_about_sel, bool& wants_clicks);
+	bool Closed() override;
+
+	bool ShouldDefer() override { return false; }
+
+	void FromPrefs(IDocPrefs * prefs);
+	void ToPrefs(IDocPrefs * prefs);
+
+	WED_MapPreviewPane * MapPreviewPane() { return mMapPreviewPane; }
 
 private:
-
-	bool			mVisible;
-	ITexMgr *		mTexMgr;
-	string			mBitmapPath;
+	WED_MapPreviewPane * mMapPreviewPane;
+	GUI_Commander * mDocumentWindowCmdr;
 };
 
-#endif /* WED_WorldMapLayer_H */
+#endif

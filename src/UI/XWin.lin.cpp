@@ -469,7 +469,7 @@ void XWin::Resize(int inWidth, int inHeight)
 
 void XWin::ForceRefresh(void)
 {
-	flush();
+	redraw();
 }
 
 void XWin::UpdateNow(void)

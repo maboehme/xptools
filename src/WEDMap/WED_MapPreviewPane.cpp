@@ -32,6 +32,7 @@
 #include "MathUtils.h"
 #include "WED_Colors.h"
 #include "WED_Document.h"
+#include "WED_FacadePreview.h"
 #include "WED_MapZoomerNew.h"
 #include "WED_Menus.h"
 #include "WED_Messages.h"
@@ -266,6 +267,14 @@ void WED_MapPreviewPane::Draw(GUI_GraphState * state)
 	glEnd();
 	GUI_FontDraw(state, font_UI_Basic, white, 0, 12, "N", align_Center);
 	glPopMatrix();
+
+#if DEV
+	const FacadeStats& facade_stats = GetFacadeStats();
+	printf("%d / %d walls big enough, %d / %d LODs drawn\n",
+		facade_stats.numWallsBigEnough, facade_stats.numWallsTested,
+		facade_stats.numLODsDrawn, facade_stats.numLODsTested);
+	ResetFacadeStats();
+#endif
 
 #if SHOW_FPS
 	static clock_t  last_time = 0;

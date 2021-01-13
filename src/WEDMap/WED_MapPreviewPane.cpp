@@ -52,7 +52,7 @@
 #endif
 
 // display Frames Per Second. Will peg CPU/GPU load at 100%, only useable for diaganostic purposes.
-#define SHOW_FPS 1
+#define SHOW_FPS 0
 
 static constexpr double DRAW_DISTANCE = 50e3;
 

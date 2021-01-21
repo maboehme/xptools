@@ -90,9 +90,7 @@ inline void setup_transformation(double heading, double scale_s, double scale_t,
 		m1[5] /= ppm * scale_t;
 		applyRotation(m1, heading, 0, 0, 1);
 
-		double l,b,r,t;
-		z->GetPixelBounds(l,b,r,t);
-		applyTranslation(m1, l-origin.x_, b-origin.y_ ,0);
+		applyTranslation(m1, -origin.x_, -origin.y_, 0);
 
 		double	proj_tex_s[4], proj_tex_t[4];
 		proj_tex_s[0] = m1[0 ];

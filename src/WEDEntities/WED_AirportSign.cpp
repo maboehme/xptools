@@ -25,6 +25,7 @@
 #include "WED_EnumSystem.h"
 #include "AptDefs.h"
 #include "WED_Errors.h"
+#include "XESConstants.h"
 
 DEFINE_PERSISTENT(WED_AirportSign)
 TRIVIAL_COPY(WED_AirportSign, WED_GISPoint_Heading)
@@ -83,6 +84,28 @@ void		WED_AirportSign::Export(		 AptSign_t& x) const
 	x.style_code = ENUM_Export(style.value);
 	x.size_code = ENUM_Export(height.value);
 	GetName(x.text);
+}
+
+void		WED_AirportSign::GetBounds(GISLayer_t l, Bbox2&  bounds) const
+{
+	// It would be more accurate to calculate the exact size based on the content of the
+	// sign, but for the time being, we just make a reasonable assumption here.
+	constexpr double MAX_RADIUS = 5.0;
+
+	WED_GISPoint::GetBounds(l, bounds);
+	double mtr_to_lon = MTR_TO_DEG_LAT / cos(bounds.ymin() * DEG_TO_RAD);
+	bounds.expand(mtr_to_lon * MAX_RADIUS);
+}
+
+Bbox3		WED_AirportSign::GetVisibleBounds() const
+{
+	constexpr double MAX_HEIGHT = 1.0;
+
+	Bbox2 bb2;
+	GetBounds(gis_Geo, bb2);
+	Bbox3 bb3(bb2);
+	bb3.p2.z = MAX_HEIGHT;
+	return bb3;
 }
 
 void		WED_AirportSign::GetNthPropertyInfo(int n, PropertyInfo_t& info) const

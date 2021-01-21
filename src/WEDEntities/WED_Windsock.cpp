@@ -23,6 +23,7 @@
 
 #include "WED_Windsock.h"
 #include "AptDefs.h"
+#include "XESConstants.h"
 
 DEFINE_PERSISTENT(WED_Windsock)
 TRIVIAL_COPY(WED_Windsock, WED_GISPoint)
@@ -53,4 +54,24 @@ void	WED_Windsock::Export(		 AptWindsock_t& x) const
 	GetLocation(gis_Geo,x.location);
 	GetName(x.name);
 	x.lit = lit;
+}
+
+void	WED_Windsock::GetBounds(GISLayer_t l, Bbox2&  bounds) const
+{
+	constexpr double MAX_RADIUS = 5.0;
+
+	WED_GISPoint::GetBounds(l, bounds);
+	double mtr_to_lon = MTR_TO_DEG_LAT / cos(bounds.ymin() * DEG_TO_RAD);
+	bounds.expand(mtr_to_lon * MAX_RADIUS);
+}
+
+Bbox3	WED_Windsock::GetVisibleBounds() const
+{
+	constexpr double MAX_HEIGHT = 8.0;
+
+	Bbox2 bb2;
+	GetBounds(gis_Geo, bb2);
+	Bbox3 bb3(bb2);
+	bb3.p2.z = MAX_HEIGHT;
+	return bb3;
 }

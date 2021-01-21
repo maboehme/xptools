@@ -40,6 +40,9 @@ public:
 	void			SetKind(int kind);
 	int 			GetKind(void) const;
 
+	virtual void			GetBounds(GISLayer_t l, Bbox2&  bounds) const;
+	virtual Bbox3			GetVisibleBounds() const;
+
 	virtual const char *	HumanReadableType(void) const { return "Airport Beacon"; }
 
 private:

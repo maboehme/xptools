@@ -39,6 +39,9 @@ public:
 		void		Import(const AptWindsock_t& x, void (* print_func)(void *, const char *, ...), void * ref);
 		void		Export(		 AptWindsock_t& x) const;
 
+	virtual void	GetBounds(GISLayer_t l, Bbox2&  bounds) const;
+	virtual Bbox3	GetVisibleBounds() const;
+
 	virtual const char *	HumanReadableType(void) const { return "Windsock"; }
 
 private:

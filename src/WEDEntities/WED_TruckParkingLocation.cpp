@@ -11,6 +11,7 @@
 #include "WED_TruckParkingLocation.h"
 #include "AptDefs.h"
 #include "WED_EnumSystem.h"
+#include "XESConstants.h"
 
 DEFINE_PERSISTENT(WED_TruckParkingLocation)
 TRIVIAL_COPY(WED_TruckParkingLocation, WED_GISPoint_Heading)
@@ -60,6 +61,25 @@ void	WED_TruckParkingLocation::Export(		 AptTruckParking_t& x) const
 	
 }
 
+void	WED_TruckParkingLocation::GetBounds(GISLayer_t l, Bbox2&  bounds) const
+{
+	constexpr double MAX_RADIUS = 15.0;
+
+	WED_GISPoint::GetBounds(l, bounds);
+	double mtr_to_lon = MTR_TO_DEG_LAT / cos(bounds.ymin() * DEG_TO_RAD);
+	bounds.expand(mtr_to_lon * MAX_RADIUS);
+}
+
+Bbox3	WED_TruckParkingLocation::GetVisibleBounds() const
+{
+	constexpr double MAX_HEIGHT = 5.0;
+
+	Bbox2 bb2;
+	GetBounds(gis_Geo, bb2);
+	Bbox3 bb3(bb2);
+	bb3.p2.z = MAX_HEIGHT;
+	return bb3;
+}
 
 void		WED_TruckParkingLocation::GetNthPropertyInfo(int n, PropertyInfo_t& info) const
 {

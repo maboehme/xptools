@@ -25,6 +25,7 @@
 #include "WED_EnumSystem.h"
 #include "AptDefs.h"
 #include "WED_Errors.h"
+#include "XESConstants.h"
 
 DEFINE_PERSISTENT(WED_AirportBeacon)
 TRIVIAL_COPY(WED_AirportBeacon, WED_GISPoint)
@@ -65,4 +66,24 @@ void	WED_AirportBeacon::Export(		 AptBeacon_t& x) const
 	GetLocation(gis_Geo, x.location);
 	x.color_code = ENUM_Export(kind.value);
 	GetName(x.name);
+}
+
+void	WED_AirportBeacon::GetBounds(GISLayer_t l, Bbox2&  bounds) const
+{
+	constexpr double MAX_RADIUS = 5.0;
+
+	WED_GISPoint::GetBounds(l, bounds);
+	double mtr_to_lon = MTR_TO_DEG_LAT / cos(bounds.ymin() * DEG_TO_RAD);
+	bounds.expand(mtr_to_lon * MAX_RADIUS);
+}
+
+Bbox3	WED_AirportBeacon::GetVisibleBounds() const
+{
+	constexpr double MAX_HEIGHT = 20.0;
+
+	Bbox2 bb2;
+	GetBounds(gis_Geo, bb2);
+	Bbox3 bb3(bb2);
+	bb3.p2.z = MAX_HEIGHT;
+	return bb3;
 }

@@ -25,6 +25,7 @@
 #include "WED_EnumSystem.h"
 #include "AptDefs.h"
 #include "WED_Errors.h"
+#include "XESConstants.h"
 
 DEFINE_PERSISTENT(WED_LightFixture)
 TRIVIAL_COPY(WED_LightFixture, WED_GISPoint_Heading)
@@ -75,4 +76,24 @@ void	WED_LightFixture::Export(		 AptLight_t& x) const
 	x.angle = angle;
 	x.light_code = ENUM_Export(light_type.value);
 	GetName(x.name);
+}
+
+void	WED_LightFixture::GetBounds(GISLayer_t l, Bbox2&  bounds) const
+{
+	constexpr double MAX_RADIUS = 30.0;
+
+	WED_GISPoint::GetBounds(l, bounds);
+	double mtr_to_lon = MTR_TO_DEG_LAT / cos(bounds.ymin() * DEG_TO_RAD);
+	bounds.expand(mtr_to_lon * MAX_RADIUS);
+}
+
+Bbox3	WED_LightFixture::GetVisibleBounds() const
+{
+	constexpr double MAX_HEIGHT = 1.0;
+
+	Bbox2 bb2;
+	GetBounds(gis_Geo, bb2);
+	Bbox3 bb3(bb2);
+	bb3.p2.z = MAX_HEIGHT;
+	return bb3;
 }

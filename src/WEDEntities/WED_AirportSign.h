@@ -43,6 +43,8 @@ public:
 
 	virtual const char *	HumanReadableType(void) const { return "Taxi Sign"; }
 
+	virtual void		GetBounds(GISLayer_t l, Bbox2&  bounds) const;
+	virtual Bbox3		GetVisibleBounds() const;
 	virtual void		GetNthPropertyInfo(int n, PropertyInfo_t& info) const;
 	virtual void		GetNthProperty(int n, PropertyVal_t& val) const;
 	virtual void		SetNthProperty(int n, const PropertyVal_t& val);

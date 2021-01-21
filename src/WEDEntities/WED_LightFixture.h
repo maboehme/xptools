@@ -40,6 +40,9 @@ public:
 		void		Import(const AptLight_t& rhs, void (* print_func)(void *, const char *, ...), void * ref);
 		void		Export(		 AptLight_t& rhs) const;
 
+	virtual void	GetBounds(GISLayer_t l, Bbox2&  bounds) const;
+	virtual Bbox3	GetVisibleBounds() const;
+
 	virtual const char *	HumanReadableType(void) const { return "Light Fixture"; }
 
 private:

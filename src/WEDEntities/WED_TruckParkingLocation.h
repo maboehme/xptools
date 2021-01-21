@@ -30,6 +30,8 @@ public:
 
 	virtual const char *	HumanReadableType(void) const { return "Truck Parking Location"; }
 
+	virtual void		GetBounds(GISLayer_t l, Bbox2&  bounds) const;
+	virtual Bbox3		GetVisibleBounds() const;
 	virtual void		GetNthPropertyInfo(int n, PropertyInfo_t& info) const;
 
 private:

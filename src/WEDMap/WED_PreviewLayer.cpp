@@ -1586,8 +1586,8 @@ struct	preview_light : public WED_PreviewItem {
  * DRAWING OBJECT
  ***************************************************************************************************************************************************/
 
-WED_PreviewLayer::WED_PreviewLayer(GUI_Pane * host, WED_MapZoomerNew * zoomer, IResolver * resolver) :
-	WED_MapLayer(host, zoomer, resolver),
+WED_PreviewLayer::WED_PreviewLayer(GUI_Pane * host, WED_MapZoomerNew * zoomer, IResolver * resolver) : 
+	WED_MapLayerWithZoomer(host, zoomer, resolver), 
 	mPavementAlpha(1.0f),
 	mObjDensity(6),
 	mRunwayLayer(group_RunwaysBegin),

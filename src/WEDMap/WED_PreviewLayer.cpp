@@ -260,7 +260,7 @@ static bool has_lod_at_distance(const XObj8& obj, double distance)
 	return false;
 }
 
-void draw_obj_at_ll(ITexMgr * tman, const XObj8 * o, const Point2& loc, float agl, float r, GUI_GraphState * g, const WED_MapProjection& projection, WED_Camera & camera)
+void draw_obj_at_ll(ITexMgr * tman, const XObj8 * o, const Point2& loc, float agl, float r, GUI_GraphState * g, const WED_MapProjection& projection, WED_Camera & camera, unsigned geom_to_draw = objgeom_Regular | objgeom_Draped)
 {
 	if (!o) return;
 	Point2 l = projection.LLToXY(loc);
@@ -281,11 +281,11 @@ void draw_obj_at_ll(ITexMgr * tman, const XObj8 * o, const Point2& loc, float ag
 	camera.Rotate(90, Vector3(1, 0, 0));
 	camera.Rotate(r, Vector3(0, -1, 0));
 	Obj_DrawStruct ds = { g, id1, id2 };
-	ObjDraw8(*o, distance, &kFuncs, &ds);
+	ObjDraw8(*o, distance, &kFuncs, &ds, geom_to_draw);
 	camera.PopMatrix();
 }
 
-void draw_obj_at_xyz(ITexMgr * tman, const XObj8 * o, double x, double y, double z, float r, GUI_GraphState * g, WED_Camera& camera)
+void draw_obj_at_xyz(ITexMgr * tman, const XObj8 * o, double x, double y, double z, float r, GUI_GraphState * g, WED_Camera& camera, unsigned geom_to_draw)
 {
 	if (!o) return;
 	double distance = camera.PointDistance(Point3(x, y, z));
@@ -301,7 +301,7 @@ void draw_obj_at_xyz(ITexMgr * tman, const XObj8 * o, double x, double y, double
 	camera.Translate({ x, y, z });
 	camera.Rotate(r, { 0, -1, 0 });
 	Obj_DrawStruct ds = { g, id1, id2 };
-	ObjDraw8(*o, distance, &kFuncs, &ds);
+	ObjDraw8(*o, distance, &kFuncs, &ds, geom_to_draw);
 	camera.PopMatrix();
 }
 
@@ -346,7 +346,7 @@ void draw_agp_at_xyz(ITexMgr * tman, const agp_t * agp, double x, double y, doub
 	camera.PopMatrix();
 }
 
-void draw_agp_at_ll(ITexMgr * tman, const agp_t * agp, const Point2& loc, float agl, float r, GUI_GraphState * g, const WED_MapProjection& projection, WED_Camera & camera, int preview_level)
+void draw_agp_at_ll(ITexMgr * tman, const agp_t * agp, const Point2& loc, float agl, float r, GUI_GraphState * g, const WED_MapProjection& projection, WED_Camera & camera, int preview_level, unsigned geom_to_draw)
 {
 	if (!agp) return;
 	Point2 pix = projection.LLToXY(loc);
@@ -362,7 +362,7 @@ void draw_agp_at_ll(ITexMgr * tman, const agp_t * agp, const Point2& loc, float 
 	camera.Rotate(90, Vector3(1, 0, 0));
 	camera.Rotate(r, Vector3(0, -1, 0));
 	glColor3f(1, 1, 1);
-	if (!agp->tile.empty() && !agp->hide_tiles)
+	if (!agp->tile.empty() && !agp->hide_tiles && (geom_to_draw & objgeom_Draped) != 0)
 	{
 		glDisable(GL_CULL_FACE);
 		glBegin(GL_TRIANGLE_FAN);
@@ -385,14 +385,15 @@ void draw_agp_at_ll(ITexMgr * tman, const agp_t * agp, const Point2& loc, float 
 					agl = roundf(agl / o.scp_step) * o.scp_step;
 				else
 					agl = 0.0;
-				draw_obj_at_xyz(tman, o.obj, o.x, agl, -o.y, o.r, g, camera);
+				draw_obj_at_xyz(tman, o.obj, o.x, agl, -o.y, o.r, g, camera, geom_to_draw);
 			}
 			else
-				draw_obj_at_xyz(tman, o.obj, o.x, o.z, -o.y, o.r, g, camera);
+				draw_obj_at_xyz(tman, o.obj, o.x, o.z, -o.y, o.r, g, camera, geom_to_draw);
 		}
 	}
-	for (auto& f : agp->facs)
-		draw_facade(tman, nullptr, f.name, *(f.fac), f.locs, f.walls, f.height, g, true, camera);
+	if ((geom_to_draw & objgeom_Regular) != 0)
+		for (auto& f : agp->facs)
+			draw_facade(tman, nullptr, f.name, *(f.fac), f.locs, f.walls, f.height, g, true, camera);
 	camera.PopMatrix();
 }
 
@@ -429,7 +430,6 @@ int layer_group_for_string(const char * s, int o, int def)
 /***************************************************************************************************************************************************
  * DRAW ITEMS FOR SORT
  ***************************************************************************************************************************************************/
-
 
 struct sort_item_by_layer {	bool operator()(WED_PreviewItem * lhs, WED_PreviewItem * rhs) const { return lhs->get_layer() < rhs->get_layer(); } };
 
@@ -1275,8 +1275,9 @@ struct	preview_ortho : public preview_polygon {
 struct	preview_object : public WED_PreviewItem {
 	WED_ObjPlacement * obj;
 	int	preview_level;
+	ObjGeometry geom_to_draw;
 	IResolver * resolver;
-	preview_object(WED_ObjPlacement * o, int l, int pl, IResolver * r) : WED_PreviewItem(l), obj(o), resolver(r), preview_level(pl) { }
+	preview_object(WED_ObjPlacement * o, int l, int pl, ObjGeometry geom, IResolver * r) : WED_PreviewItem(l), obj(o), preview_level(pl), geom_to_draw(geom), resolver(r)  { }
 	void draw_it(const WED_MapProjection& projection, WED_Camera & camera, GUI_GraphState * g, float mPavementAlpha) override
 	{
 		WED_ResourceMgr * rmgr = WED_GetResourceMgr(resolver);
@@ -1289,16 +1290,19 @@ struct	preview_object : public WED_PreviewItem {
 		const string& vpath = obj->GetResource();
 		obj->GetLocation(gis_Geo, loc);
 
-		g->SetState(false, 1, false, true, true, true, true);
+		if (geom_to_draw == objgeom_Draped)
+			g->SetState(false, 1, false, true, true, false, false);
+		else
+			g->SetState(false, 1, false, true, true, true, true);
 		glColor4f(1, 1, 1, 1);
 
 		float agl = obj->HasCustomMSL() > 1 ? obj->GetCustomMSL() : 0.0;
 
 		if(rmgr->GetObj(vpath, o))
-			draw_obj_at_ll(tman,   o, loc, agl, obj->GetHeading(), g, projection, camera);
+			draw_obj_at_ll(tman,   o, loc, agl, obj->GetHeading(), g, projection, camera, geom_to_draw);
 		else if (rmgr->GetAGP(vpath, agp))
 		{
-			draw_agp_at_ll(tman, agp, loc, agl, obj->GetHeading(), g, projection, camera, preview_level);
+			draw_agp_at_ll(tman, agp, loc, agl, obj->GetHeading(), g, projection, camera, preview_level, geom_to_draw);
 		}
 		else
 		{
@@ -1788,7 +1792,13 @@ bool		WED_PreviewLayer::DrawEntityVisualization		(bool inCurrent, IGISEntity * e
 			if(obj->GetShowLevel() <= mObjDensity)
 			{
 				if (PixelSize(*obj, 2 * obj->GetVisibleMeters(), *GetProjection(), *GetCamera()) > MIN_PIXELS_PREVIEW)
-					mPreviewItems.push_back(new preview_object(obj, group_Objects, mObjDensity, GetResolver()));
+				{
+					unsigned geom = obj->ObjectGeometry();
+					if (geom & objgeom_Draped)
+						mPreviewItems.push_back(new preview_object(obj, group_AirportsEnd, mObjDensity, objgeom_Draped, GetResolver()));
+					if (geom & objgeom_Regular)
+						mPreviewItems.push_back(new preview_object(obj, group_Objects, mObjDensity, objgeom_Regular, GetResolver()));
+				}
 			}
 	}
 	else if (sub_class == WED_TruckParkingLocation::sClass)
@@ -1849,7 +1859,9 @@ void		WED_PreviewLayer::DrawVisualization			(bool inCurent, GUI_GraphState * g)
 		glClear(GL_DEPTH_BUFFER_BIT);
 	}
 
-	sort(mPreviewItems.begin(),mPreviewItems.end(),sort_item_by_layer());
+	// Use a stable sort so that multiple draped polygons always get drawn in the same order.
+	// Otherwise, the order could change as we move around the scene and cause flickering.
+	stable_sort(mPreviewItems.begin(),mPreviewItems.end(),sort_item_by_layer());
 	for(vector<WED_PreviewItem *>::iterator i = mPreviewItems.begin(); i != mPreviewItems.end(); ++i)
 	{
 		(*i)->draw_it(*GetProjection(), *GetCamera(), g, mPavementAlpha);

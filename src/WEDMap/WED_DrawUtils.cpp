@@ -170,7 +170,8 @@ void glPolygon2(const Point2 * pts, bool has_uv, const int * contours, int n, fl
 		{
 			if(!raw_pts.empty())
 			{
-				tessAddContour(tess, 2, &raw_pts[0], 2 * sizeof(GLfloat), raw_pts.size() / 2);
+				if (raw_pts.size() > 4)
+					tessAddContour(tess, 2, &raw_pts[0], 2 * sizeof(GLfloat), raw_pts.size() / 2);
 				raw_pts.clear();
 			}
 		}
@@ -179,7 +180,7 @@ void glPolygon2(const Point2 * pts, bool has_uv, const int * contours, int n, fl
 		pts_p++;
 		if(has_uv)	pts_p++;
 	}
-	if(!raw_pts.empty())
+	if(raw_pts.size() > 4)
 		tessAddContour(tess, 2, &raw_pts[0], 2 * sizeof(GLfloat), raw_pts.size() / 2);
 
 	if(tessTesselate(tess, TESS_WINDING_NONZERO, TESS_POLYGONS, 3, 2, 0))
